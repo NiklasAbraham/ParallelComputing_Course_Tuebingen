@@ -161,6 +161,7 @@ For the `sum_squares` kernel on 100M float64 elements:
 | Backend | Time | Relative |
 |---------|------|----------|
 | Futhark CPU (POCL) | ~0.134s | 1.0x |
+| Futhark CUDA | ~0.123s | 1.1x faster |
 | PyTorch CUDA | ~0.003s | 45x faster |
 
 The large gap is expected:
@@ -168,6 +169,20 @@ The large gap is expected:
 - Memory bandwidth: ~936 GB/s (GPU) vs ~50 GB/s (DDR4)
 - This is a memory-bound operation ideal for GPU
 
-If Futhark GPU worked, we'd expect it to be competitive with PyTorch CUDA
+If Futhark OpenCL worked, we'd expect it to be competitive with PyTorch CUDA
 (both would be memory-bandwidth limited).
+
+For a compute-heavy kernel (matrix multiply + bias + ReLU + sum, 1024×1024 matrices):
+
+| Backend | Time | Speedup vs Futhark CPU |
+|---------|------|------------------------|
+| Futhark CPU (POCL) | ~0.643s | 1.0x |
+| Futhark CUDA | ~0.007s | 89.9x |
+| PyTorch CUDA | ~0.005s | 127.4x |
+
+Run with:
+
+```bash
+python kernel_test_matmul.py
+```
 

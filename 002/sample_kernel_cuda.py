@@ -46,6 +46,14 @@ class SampleKernelCUDA:
             ctypes.c_void_p,
         ]
         self._lib.futhark_entry_sum_squares.restype = ctypes.c_int
+        self._lib.futhark_entry_matmul_bias_relu_sum.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+            ctypes.c_void_p,
+        ]
+        self._lib.futhark_entry_matmul_bias_relu_sum.restype = ctypes.c_int
         self._lib.futhark_context_sync.argtypes = [ctypes.c_void_p]
         self._lib.futhark_context_sync.restype = ctypes.c_int
         self._lib.futhark_new_f64_1d.argtypes = [
@@ -56,6 +64,15 @@ class SampleKernelCUDA:
         self._lib.futhark_new_f64_1d.restype = ctypes.c_void_p
         self._lib.futhark_free_f64_1d.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
         self._lib.futhark_free_f64_1d.restype = ctypes.c_int
+        self._lib.futhark_new_f64_2d.argtypes = [
+            ctypes.c_void_p,
+            ctypes.POINTER(ctypes.c_double),
+            ctypes.c_int64,
+            ctypes.c_int64,
+        ]
+        self._lib.futhark_new_f64_2d.restype = ctypes.c_void_p
+        self._lib.futhark_free_f64_2d.argtypes = [ctypes.c_void_p, ctypes.c_void_p]
+        self._lib.futhark_free_f64_2d.restype = ctypes.c_int
 
         cfg = self._lib.futhark_context_config_new()
         if cfg is None:
@@ -112,5 +129,58 @@ class SampleKernelCUDA:
             return float(result.value)
         finally:
             self._check(self._lib.futhark_free_f64_1d(self._ctx, dev_array))
+
+    def matmul_bias_relu_sum(
+        self, a: np.ndarray, b: np.ndarray, bias: np.ndarray
+    ) -> float:
+        a = np.asarray(a, dtype=np.float64, order="C")
+        b = np.asarray(b, dtype=np.float64, order="C")
+        bias = np.asarray(bias, dtype=np.float64, order="C")
+
+        if a.ndim != 2 or b.ndim != 2 or bias.ndim != 1:
+            raise ValueError("Shapes must be (n,k), (k,m), and (m)")
+        n, k_a = a.shape
+        k_b, m = b.shape
+        if k_a != k_b:
+            raise ValueError("Inner dimensions must match (a.shape[1] == b.shape[0])")
+        if bias.shape[0] != m:
+            raise ValueError("Bias must have length equal to number of columns in b")
+
+        a_ptr = a.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+        b_ptr = b.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+        bias_ptr = bias.ctypes.data_as(ctypes.POINTER(ctypes.c_double))
+
+        a_dev = self._lib.futhark_new_f64_2d(
+            self._ctx, a_ptr, ctypes.c_int64(n), ctypes.c_int64(k_a)
+        )
+        if a_dev is None:
+            raise FutharkError("Failed to transfer matrix 'a' to device.")
+        b_dev = self._lib.futhark_new_f64_2d(
+            self._ctx, b_ptr, ctypes.c_int64(k_b), ctypes.c_int64(m)
+        )
+        if b_dev is None:
+            self._lib.futhark_free_f64_2d(self._ctx, a_dev)
+            raise FutharkError("Failed to transfer matrix 'b' to device.")
+        bias_dev = self._lib.futhark_new_f64_1d(
+            self._ctx, bias_ptr, ctypes.c_int64(m)
+        )
+        if bias_dev is None:
+            self._lib.futhark_free_f64_2d(self._ctx, a_dev)
+            self._lib.futhark_free_f64_2d(self._ctx, b_dev)
+            raise FutharkError("Failed to transfer bias to device.")
+
+        try:
+            result = ctypes.c_double()
+            self._check(
+                self._lib.futhark_entry_matmul_bias_relu_sum(
+                    self._ctx, result, a_dev, b_dev, bias_dev
+                )
+            )
+            self._check(self._lib.futhark_context_sync(self._ctx))
+            return float(result.value)
+        finally:
+            self._check(self._lib.futhark_free_f64_2d(self._ctx, a_dev))
+            self._check(self._lib.futhark_free_f64_2d(self._ctx, b_dev))
+            self._check(self._lib.futhark_free_f64_1d(self._ctx, bias_dev))
 
 

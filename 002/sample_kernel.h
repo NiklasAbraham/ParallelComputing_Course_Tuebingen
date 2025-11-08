@@ -58,12 +58,21 @@ int futhark_values_f64_1d(struct futhark_context *ctx, struct futhark_f64_1d *ar
 int futhark_index_f64_1d(struct futhark_context *ctx, double *out, struct futhark_f64_1d *arr, int64_t i0);
 CUdeviceptr futhark_values_raw_f64_1d(struct futhark_context *ctx, struct futhark_f64_1d *arr);
 const int64_t *futhark_shape_f64_1d(struct futhark_context *ctx, struct futhark_f64_1d *arr);
+struct futhark_f64_2d;
+struct futhark_f64_2d *futhark_new_f64_2d(struct futhark_context *ctx, const double *data, int64_t dim0, int64_t dim1);
+struct futhark_f64_2d *futhark_new_raw_f64_2d(struct futhark_context *ctx, CUdeviceptr data, int64_t dim0, int64_t dim1);
+int futhark_free_f64_2d(struct futhark_context *ctx, struct futhark_f64_2d *arr);
+int futhark_values_f64_2d(struct futhark_context *ctx, struct futhark_f64_2d *arr, double *data);
+int futhark_index_f64_2d(struct futhark_context *ctx, double *out, struct futhark_f64_2d *arr, int64_t i0, int64_t i1);
+CUdeviceptr futhark_values_raw_f64_2d(struct futhark_context *ctx, struct futhark_f64_2d *arr);
+const int64_t *futhark_shape_f64_2d(struct futhark_context *ctx, struct futhark_f64_2d *arr);
 
 // Opaque values
 
 
 
 // Entry points
+int futhark_entry_matmul_bias_relu_sum(struct futhark_context *ctx, double *out0, const struct futhark_f64_2d *in0, const struct futhark_f64_2d *in1, const struct futhark_f64_1d *in2);
 int futhark_entry_sum_squares(struct futhark_context *ctx, double *out0, const struct futhark_f64_1d *in0);
 
 // Miscellaneous

@@ -1,7 +1,8 @@
 import time
 
+import os
 import numpy as np
-import sample_kernel  # Import the generated Python file
+import sample_kernel
 import torch
 
 # 1. Create your data in Python using NumPy
@@ -11,8 +12,7 @@ torch_device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch_data = torch.from_numpy(data).to(torch_device)
 torch_data = torch_data.to(torch.float64)
 
-# 2. Initialize the Futhark context
-# This finds the OpenCL device, compiles the C code, etc.
+# 2. Initialize the Futhark context (PyOpenCL backend)
 futhark_kernel = sample_kernel.sample_kernel()
 
 num_runs = 100
